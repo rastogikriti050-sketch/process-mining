@@ -27,3 +27,13 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\venv\Scripts\Activate.ps1
 ```
 ---
+
+-> Install requirements
+```
+pip install -r requirements.txt
+```
+
+-> To run backend run the following command inside the venv
+```
+python app.py
+```
