@@ -228,3 +228,7 @@ config.ini
 .env.local
 .env.production
 secrets.py
+
+# Vercel
+.vercel
+*.log
