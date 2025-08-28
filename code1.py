@@ -188,7 +188,7 @@ def predict_case_duration(df_optimized):
 # 🚀 Run pipeline
 if __name__ == '__main__':
     df_opt = run_process_mining_pipeline(
-        r"C:\\Users\\KIRTI\\Desktop\\process mining\\Insurance_claims_event_log.xlsx",
+        r"C:\\Users\\DELL\\Project\\kriti_process_mining\\process-mining\\Insurance_claims_event_log.xlsx",
         case_col="case_id",
         activity_col="activity_name",
         timestamp_col="timestamp"
