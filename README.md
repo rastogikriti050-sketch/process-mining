@@ -1,5 +1,5 @@
 # Process Mining
-Here goes the description of the project
+Here goes the description of the project.
 
 ## venv setup
 
