@@ -35,8 +35,59 @@ from sklearn.metrics import (
 
 app = Flask(__name__)
 
+
 # Global variables to store analysis results
 analysis_results = {}
+
+def generate_petri_net_visualization(net, im, fm):
+    """Generate Petri net visualization as base64 image"""
+    try:
+        # Generate the Petri net visualization
+        gviz = pn_visualizer.apply(net, im, fm)
+        
+        # Save to a temporary file
+        temp_file = "temp_petri_net.png"
+        pn_visualizer.save(gviz, temp_file)
+        
+        # Read the image and convert to base64
+        with open(temp_file, "rb") as img_file:
+            img_data = img_file.read()
+            img_base64 = base64.b64encode(img_data).decode('utf-8')
+        
+        # Clean up temp file
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+            
+        return img_base64
+        
+    except Exception as e:
+        print(f"Error generating Petri net visualization: {e}")
+        return None
+
+def generate_heuristics_net_visualization(heu_net):
+    """Generate Heuristics net visualization as base64 image"""
+    try:
+        # Generate the Heuristics net visualization
+        gviz = hn_visualizer.apply(heu_net)
+        
+        # Save to a temporary file
+        temp_file = "temp_heuristics_net.png"
+        hn_visualizer.save(gviz, temp_file)
+        
+        # Read the image and convert to base64
+        with open(temp_file, "rb") as img_file:
+            img_data = img_file.read()
+            img_base64 = base64.b64encode(img_data).decode('utf-8')
+        
+        # Clean up temp file
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+            
+        return img_base64
+        
+    except Exception as e:
+        print(f"Error generating Heuristics net visualization: {e}")
+        return None
 
 def simulate_parallel_faster(df, transitions):
     """Simulate parallel execution for faster processing"""
@@ -69,7 +120,11 @@ def run_process_mining_analysis(file_path, case_col, activity_col, timestamp_col
         if file_path.endswith(".xlsx"):
             df = pd.read_excel(file_path)
         else:
-            df = pd.read_csv(file_path)
+            # Try to read CSV with different separators
+            try:
+                df = pd.read_csv(file_path, sep=';')  # Try semicolon first
+            except:
+                df = pd.read_csv(file_path, sep=',')  # Fallback to comma
         
         # Rename columns to standard format
         df = df.rename(columns={
@@ -89,6 +144,9 @@ def run_process_mining_analysis(file_path, case_col, activity_col, timestamp_col
         # Alpha miner
         net, im, fm = alpha_miner.apply(event_log)
         
+        # Generate Petri net visualization
+        petri_net_graph = generate_petri_net_visualization(net, im, fm)
+        
         # Fitness and precision
         replay_result = token_replay.apply(event_log, net, im, fm)
         fitness_scores = [res['trace_fitness'] for res in replay_result if 'trace_fitness' in res]
@@ -97,6 +155,9 @@ def run_process_mining_analysis(file_path, case_col, activity_col, timestamp_col
         
         # Heuristics miner
         heu_net = heuristics_miner.apply_heu(event_log)
+        
+        # Generate Heuristics net visualization
+        heuristics_net_graph = generate_heuristics_net_visualization(heu_net)
         
         # DFG discovery
         dfg = dfg_discovery.apply(event_log)
@@ -131,6 +192,12 @@ def run_process_mining_analysis(file_path, case_col, activity_col, timestamp_col
             'original_data': df,
             'optimized_data': df_optimized,
             'event_log': event_log,
+            'net': net,
+            'im': im,
+            'fm': fm,
+            'heu_net': heu_net,
+            'petri_net_graph': petri_net_graph,
+            'heuristics_net_graph': heuristics_net_graph,
             'fitness': fitness,
             'precision': precision,
             'bottlenecks': bottlenecks,
@@ -241,12 +308,12 @@ def upload_file():
 
 @app.route('/analyze_existing')
 def analyze_existing():
-    """Analyze the existing Insurance claims file"""
+    """Analyze the existing Incident Management CSV file"""
     try:
         success, message = run_process_mining_analysis(
-            "Insurance_claims_event_log.xlsx",
+            "Incident_Management_CSV.csv",
             "case_id",
-            "activity_name", 
+            "Event", 
             "timestamp"
         )
         
@@ -467,6 +534,38 @@ def get_activity_details():
     except Exception as e:
         return jsonify({'error': str(e)})
 
+@app.route('/get_petri_net')
+def get_petri_net():
+    """Get Petri net visualization"""
+    if not analysis_results or 'petri_net_graph' not in analysis_results:
+        return jsonify({'error': 'No Petri net data available'})
+    
+    petri_net_data = analysis_results.get('petri_net_graph')
+    if petri_net_data:
+        return jsonify({
+            'image': petri_net_data,
+            'description': 'Original Process Model (Alpha Miner)',
+            'type': 'petri_net'
+        })
+    else:
+        return jsonify({'error': 'Failed to generate Petri net visualization'})
+
+@app.route('/get_heuristics_net')
+def get_heuristics_net():
+    """Get Heuristics net visualization"""
+    if not analysis_results or 'heuristics_net_graph' not in analysis_results:
+        return jsonify({'error': 'No Heuristics net data available'})
+    
+    heuristics_net_data = analysis_results.get('heuristics_net_graph')
+    if heuristics_net_data:
+        return jsonify({
+            'image': heuristics_net_data,
+            'description': 'Process Model with Frequencies (Heuristic Miner)',
+            'type': 'heuristics_net'
+        })
+    else:
+        return jsonify({'error': 'Failed to generate Heuristics net visualization'})
+
 @app.route('/download_optimized')
 def download_optimized():
     """Download optimized event log"""
@@ -477,6 +576,7 @@ def download_optimized():
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
+
 
 # Export app for Vercel
 application = app
