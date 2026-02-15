@@ -33,7 +33,13 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 pip install -r requirements.txt
 ```
 
+
+
 -> To run backend run the following command inside the venv
 ```
 python app.py
 ```
+
+
+## Research paper
+To continue on this topic, i am writing a research paper on process mining
